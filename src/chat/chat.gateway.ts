@@ -14,7 +14,7 @@ interface JoinData {
   room: string;
 }
 
-@WebSocketGateway(Number(process.env.SOCKET), {
+@WebSocketGateway({
   cors: {
     origin: '*',
   },
