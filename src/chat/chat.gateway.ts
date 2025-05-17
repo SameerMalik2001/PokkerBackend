@@ -14,7 +14,7 @@ interface JoinData {
   room: string;
 }
 
-@WebSocketGateway(3005, {
+@WebSocketGateway(Number(process.env.SOCKET), {
   cors: {
     origin: '*',
   },
@@ -146,6 +146,17 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
     this.roomMessagesMap.get(room)?.push(formattedMsg);
 
+    const voterMap: Map<string, string> = new Map()
+    const prevMessage = this.roomMessagesMap.get(room)
+    prevMessage.forEach((item: string[]) => {
+      if(item[1] !== '') {
+        voterMap.set(item[0], item[1])
+      }
+    })
+    const votesName = Array.from(voterMap.keys());
+    this.server.to(room).emit('NumberSelectedUser', {status: 200, data:  votesName});
+
+
     this.server.to(room).emit('message', formattedMsg);
   }
 
@@ -192,9 +203,23 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return;
     }
 
-    client.emit('previousMessagesOfRoom', {
+    this.server.to(roomName).emit('previousMessagesOfRoom', {
       status: 200,
       previousMessages: this.roomMessagesMap.get(roomName)
+    });
+  }
+
+  @SubscribeMessage('resetMessage')
+  handleResetMessage(@MessageBody() roomName: string, @ConnectedSocket() client: Socket) {
+    if (!roomName) {
+      client.emit('usersList', { status: 400, msg: 'Room ID required' });
+      return;
+    }
+
+    this.roomMessagesMap.delete(roomName)
+
+    this.server.to(roomName).emit('resetMessage', {
+      status: 200
     });
   }
 
